@@ -8,7 +8,7 @@ This is a quick port of the "Not-quite-Ralph" loop from the [ralph-wiggum plugin
 
 ## What's a Ralph Loop?
 
-The [Ralph Wiggum technique](https://www.alexalbert.io/blog/the-ralph-wiggum-technique) is an agentic pattern where you let the AI keep working in a loop until it declares the task complete. Instead of back-and-forth prompting, you give it a goal and let it run.
+The [Ralph Wiggum technique](https://ghuntley.com/ralph/) is an agentic pattern where you let the AI keep working in a loop until it declares the task complete. Instead of back-and-forth prompting, you give it a goal and let it run.
 
 This implementation isn't the "true" Ralph loop (which uses more sophisticated state management) — it's a pragmatic version that works within Cursor's constraints.
 
@@ -125,7 +125,7 @@ Loop state is stored in `/tmp/cursor-ralph-loop-<trace_id>.json`:
 
 ## Credits
 
-- Original Ralph Wiggum technique by [Alex Albert](https://www.alexalbert.io/blog/the-ralph-wiggum-technique)
+- Original Ralph Wiggum technique by [Geoffrey Huntley](https://ghuntley.com/ralph/)
 - Based on the [ralph-wiggum plugin](https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum) for Claude Code
 - This port by Jordan Baker
 
