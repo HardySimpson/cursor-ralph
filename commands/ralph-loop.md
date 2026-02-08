@@ -77,5 +77,7 @@ After each agent response, the stop hook:
 
 ## Platform Notes
 
-- **macOS**: osascript auto-continuation requires Accessibility permissions; Cursor window must be focused when session limit hits.
-- **Linux/WSL**: No osascript — loop runs up to 5 iterations per "session"; when you see "Session limit reached", run `/ralph-loop --continue <trace_id>` manually to continue.
+- **macOS**: osascript auto-continuation; grant Accessibility permissions; Cursor focused when session limit hits.
+- **Linux (X11)**: xdotool auto-continuation; install `xdotool`; Cursor focused when limit hits.
+- **Linux (Wayland)**: ydotool auto-continuation; install `ydotool` and run `ydotoold`; Cursor focused when limit hits.
+- **WSL**: PowerShell SendKeys auto-continuation to Windows Cursor; keep Cursor focused when limit hits. If no tool works, run `/ralph-loop --continue <trace_id>` manually.
