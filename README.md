@@ -4,7 +4,7 @@ Agentic looping for Cursor IDE. Keeps the agent working on a task until it's don
 
 This is a quick port of the "Not-quite-Ralph" loop from the [ralph-wiggum plugin](https://github.com/anthropics/claude-code/tree/main/plugins/ralph-wiggum) for Claude Code. Uses `osascript` on macOS to work around Cursor's 5-iteration stop hook limit.
 
-> **macOS only.** Linux/Windows PRs welcome.
+> **macOS**: full auto-continuation. **Linux/WSL**: loop works (up to 5 iterations per session; manually run `/ralph-loop --continue <trace_id>` to continue).
 
 ## What's a Ralph Loop?
 
@@ -19,13 +19,13 @@ This implementation isn't the "true" Ralph loop (which uses more sophisticated s
    git clone https://github.com/youruser/cursor-ralph.git ~/.cursor-ralph
    ```
 
-2. Symlink the command into your Cursor commands directory:
+2. Symlink the command into your Cursor commands directory (use `ralph-loop.md` so the slash command is `/ralph-loop`):
    ```bash
    mkdir -p ~/.cursor/commands
-   ln -s ~/.cursor-ralph/commands/ralph.md ~/.cursor/commands/ralph.md
+   ln -s ~/.cursor-ralph/commands/ralph-loop.md ~/.cursor/commands/ralph-loop.md
    ```
 
-3. Add the stop hook to your Cursor settings (`~/.cursor/settings.json`):
+3. Add the stop hook to your Cursor config. Either `~/.cursor/hooks.json` (Cursor native) or `~/.cursor/settings.json`:
    ```json
    {
      "hooks": {
@@ -37,8 +37,9 @@ This implementation isn't the "true" Ralph loop (which uses more sophisticated s
      }
    }
    ```
+   Or in `~/.cursor/hooks.json`: `{"version":1,"hooks":{"stop":[{"command":"/path/to/cursor-ralph/hooks/ralph-loop-stop.sh"}]}}`
 
-4. Grant Accessibility permissions to Cursor (System Settings → Privacy & Security → Accessibility). Required for the `osascript` workaround.
+4. **macOS only**: Grant Accessibility permissions to Cursor (System Settings → Privacy & Security → Accessibility). Required for the `osascript` auto-continuation.
 
 ## Usage
 
@@ -91,11 +92,13 @@ This implementation isn't the "true" Ralph loop (which uses more sophisticated s
                     (loop continues)
 ```
 
-The key trick: Cursor limits `followup_message` chains to 5 iterations. When we hit that limit, the stop hook spawns an `osascript` process that waits 1.5 seconds then simulates typing `/ralph-loop --continue <trace_id>` into Cursor. This starts a "new" user message, resetting Cursor's internal counter while preserving our loop state.
+The key trick: Cursor limits `followup_message` chains to 5 iterations. When we hit that limit, on macOS the stop hook spawns `osascript` to type `/ralph-loop --continue <trace_id>` into Cursor, starting a new user message. On Linux/WSL you run that command manually when prompted.
+
+**Linux/WSL**: The agent does not receive `CURSOR_TRACE_ID`, so it writes a **pending** state file to `/tmp/cursor-ralph-pending.json`. The stop hook (which does receive the trace ID) renames it to `/tmp/cursor-ralph-loop-<trace_id>.json` so the loop can continue.
 
 ## State File
 
-Loop state is stored in `/tmp/cursor-ralph-loop-<trace_id>.json`:
+Loop state is stored in `/tmp/cursor-ralph-loop-<trace_id>.json` (after the hook "claims" the pending file on first run). Initial state is created by the agent at `/tmp/cursor-ralph-pending.json`:
 
 ```json
 {
@@ -111,17 +114,15 @@ Loop state is stored in `/tmp/cursor-ralph-loop-<trace_id>.json`:
 
 ## Requirements
 
-- **macOS** (uses `osascript` for keyboard simulation)
-- **jq** (`brew install jq`)
-- **Cursor** with Accessibility permissions
-- Cursor window must be focused when the session limit is hit
+- **jq** (`brew install jq` or `sudo apt install jq`)
+- **Cursor**
+- **macOS** (for auto-continuation): Accessibility permissions; Cursor focused when session limit hits
 
 ## Limitations
 
-- macOS only — `osascript` doesn't exist on Linux/Windows
-- Requires Cursor to be focused when session limit hits
-- If `osascript` fails, loop stops at iteration 5 (you can manually continue)
-- The 1.5s delay between sessions is a bit janky but necessary for reliability
+- **Linux/WSL**: No `osascript` — after 5 iterations you must run `/ralph-loop --continue <trace_id>` manually to continue
+- **macOS**: Cursor must be focused when session limit hits; if `osascript` fails, loop stops at 5 (manual continue still works)
+- The 1.5s delay between sessions (macOS) is a bit janky but necessary for reliability
 
 ## Credits
 

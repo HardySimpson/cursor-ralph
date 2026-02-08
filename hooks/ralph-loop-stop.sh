@@ -1,11 +1,12 @@
 #!/bin/bash
 # Ralph loop controller - runs after every agent response
 # If in a ralph loop: increment iteration, check completion, optionally continue
-# Uses osascript to bypass Cursor's 5-iteration limit on followup_message
+# On macOS: uses osascript to bypass Cursor's 5-iteration limit on followup_message
+# On Linux: loop stops at 5 iterations; user can manually run /ralph-loop --continue <trace_id>
 
 set -euo pipefail
 
-CURSOR_ITERATION_LIMIT=5  # Cursor's built-in limit on followup_message chaining
+CURSOR_ITERATION_LIMIT=5 # Cursor's built-in limit on followup_message chaining
 
 TRACE_ID="${CURSOR_TRACE_ID:-}"
 
@@ -15,9 +16,25 @@ if [ -z "$TRACE_ID" ]; then
 fi
 
 STATE_FILE="/tmp/cursor-ralph-loop-${TRACE_ID}.json"
+PENDING_FILE="/tmp/cursor-ralph-pending.json"
+
+# Agent creates pending file (no CURSOR_TRACE_ID in agent env); hook "claims" it with trace_id
+if [ -f "$PENDING_FILE" ]; then
+  if command -v jq &>/dev/null; then
+    jq '.iterations = (.iterations // 0) | .session_iterations = (.session_iterations // 0) | .stop = (.stop // false) | .last_output = (.last_output // "")' "$PENDING_FILE" > "${STATE_FILE}.tmp" 2>/dev/null && mv "${STATE_FILE}.tmp" "$STATE_FILE" && rm -f "$PENDING_FILE"
+  else
+    mv "$PENDING_FILE" "$STATE_FILE"
+  fi
+fi
 
 # If no state file, not in a ralph loop
 if [ ! -f "$STATE_FILE" ]; then
+  exit 0
+fi
+
+# jq is required
+if ! command -v jq &>/dev/null; then
+  echo "{\"agent_message\": \"Ralph loop: jq is required. Install with: sudo apt install jq (or brew install jq)\"}"
   exit 0
 fi
 
@@ -63,20 +80,22 @@ if [ "$NEW_SESSION_ITERATIONS" -ge "$CURSOR_ITERATION_LIMIT" ]; then
   # Reset session counter for next session
   jq '.session_iterations = 0' "$STATE_FILE" > "${STATE_FILE}.tmp" && mv "${STATE_FILE}.tmp" "$STATE_FILE"
 
-  # Spawn osascript to continue the loop in a new session
-  # This bypasses Cursor's 5-iteration limit by starting a "new" user message
-  osascript -e "
-    delay 1.5
-    tell application \"Cursor\" to activate
-    delay 0.3
-    tell application \"System Events\"
-      keystroke \"/ralph-loop --continue ${TRACE_ID}\"
-      keystroke return
-    end tell
-  " &>/dev/null &
-
-  # Don't return followup_message - let osascript handle continuation
-  echo "{\"agent_message\": \"Session limit reached. Continuing automatically... (iteration $NEW_ITERATIONS of $MAX_ITERATIONS)\"}"
+  # macOS: spawn osascript to continue the loop in a new session
+  if [[ "$(uname -s)" == "Darwin" ]] && command -v osascript &>/dev/null; then
+    osascript -e "
+      delay 1.5
+      tell application \"Cursor\" to activate
+      delay 0.3
+      tell application \"System Events\"
+        keystroke \"/ralph-loop --continue ${TRACE_ID}\"
+        keystroke return
+      end tell
+    " &>/dev/null &
+    echo "{\"agent_message\": \"Session limit reached. Continuing automatically... (iteration $NEW_ITERATIONS of $MAX_ITERATIONS)\"}"
+  else
+    # Linux/WSL: no osascript — tell user to continue manually
+    echo "{\"agent_message\": \"Session limit (5) reached. To continue, run: /ralph-loop --continue ${TRACE_ID} (iteration $NEW_ITERATIONS of $MAX_ITERATIONS)\"}"
+  fi
   exit 0
 fi
 
