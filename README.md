@@ -47,7 +47,7 @@ If you prefer not to use the script:
 
 If no auto-continuation is available (or it fails), run `/ralph-loop --continue <conversation_id>` manually after 5 iterations.
 
-**Using with community extensions:** You can install [Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue) or [cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume) alongside ralph-loop to handle both the **5-round limit** and the **25 tool-call / rate limit**. If auto-continue fails, type the continue command manually in the chat. See [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md).
+**Using with community extensions:** You can install [Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue) or [cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume) alongside ralph-loop to handle both the **5-round limit** and the **25 tool-call / rate limit**. Cursor Auto Continue can be installed from the marketplace, from the bundled VSIX in the UI, or **from the command line** (dependencies: Cursor CLI in PATH + the repo’s `cursor-auto-continue-0.1.5.vsix`): `cursor --install-extension "$(pwd)/cursor-auto-continue-0.1.5.vsix"`. See [docs/CURSOR-AUTO-CONTINUE-INSTALL.md](docs/CURSOR-AUTO-CONTINUE-INSTALL.md) for all options and dependency details, and [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md) for manual continue when auto-continue fails.
 
 ## What's a Ralph Loop?
 
@@ -149,7 +149,7 @@ Loop state is stored in `/tmp/cursor-ralph-loop-<conversation_id>.json` (after t
   When the script runs in a terminal, focus is there and Ctrl+L is clear-screen in bash. The script sends **Ctrl+`** to leave the terminal, then Ctrl+L and **Escape**, then **simulates a click at the bottom-center of the Cursor window** to move focus into the chat input before typing the continue command. If it still fails, run `/ralph-loop --continue <conversation_id>` manually in the chat when you hit the 5-iteration limit. See [docs/WSL-CURSOR-FOCUS-INVESTIGATION.md](docs/WSL-CURSOR-FOCUS-INVESTIGATION.md) for a deeper analysis.
 
 - **Using extensions to also bypass the 25 tool-call limit, or how to continue manually**  
-  See [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md).
+  See [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md). To install Cursor Auto Continue from the CLI (e.g. headless), see [docs/CURSOR-AUTO-CONTINUE-INSTALL.md](docs/CURSOR-AUTO-CONTINUE-INSTALL.md) (dependencies: Cursor CLI + `cursor-auto-continue-0.1.5.vsix`).
 
 ## Credits
 

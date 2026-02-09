@@ -1,19 +1,19 @@
 #!/bin/bash
 # 将 ralph-loop 命令安装到 Cursor 能加载的位置，避免新实例中看不到 /ralph-loop
-# WSL 下 Cursor 常用 root 运行，会读 /root/.cursor，因此同时安装到 $HOME 和 /root
-# 支持 --local / -l：安装到脚本所在目录的 .cursor/
-# 支持 --project PATH / -p PATH：安装到指定项目目录的 .cursor/（PATH 可为 . 表示当前目录）
+# 默认：在当前目录下创建/使用 .cursor 并安装（在项目根目录执行脚本即可）
+# 支持 --global / -g：同时安装到全局 ~/.cursor、/root/.cursor 等
+# 支持 --project PATH / -p PATH：安装到指定目录的 .cursor/（PATH 可为 . 表示当前目录）
 set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CMD_SRC="$SCRIPT_DIR/commands/ralph-loop.md"
+CWD="$(pwd)"
 
-DO_LOCAL=false
-DO_GLOBAL=true
+DO_CWD=true
+DO_GLOBAL=false
 PROJECT_DIR=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --local|-l) DO_LOCAL=true ;;
-    --local-only) DO_LOCAL=true; DO_GLOBAL=false ;;
+    --global|-g) DO_GLOBAL=true ;;
     --project|-p)
       [ $# -gt 1 ] || { echo "Error: --project requires PATH" >&2; exit 1; }
       PROJECT_DIR="$2"
@@ -21,18 +21,15 @@ while [ $# -gt 0 ]; do
       ;;
     --help|-h)
       echo "Usage: $0 [OPTIONS]"
-      echo "  (no args)       Install to global Cursor config (~/.cursor, /root/.cursor, etc.)"
-      echo "  --local, -l     Also install to script dir .cursor/"
-      echo "  --local-only    Install only to script dir .cursor/"
-      echo "  --project PATH  Install to PATH/.cursor/ (PATH can be . for cwd); creates/updates hooks.json"
+      echo "  (no args)       Install to current directory .cursor/ (recommended: run from project root)"
+      echo "  --global, -g    Also install to global Cursor config (~/.cursor, /root/.cursor, etc.)"
+      echo "  --project PATH  Install to PATH/.cursor/ (PATH can be . for cwd)"
       echo "  -p PATH         Same as --project"
       exit 0
       ;;
   esac
   shift
 done
-# 本目录下已有 .cursor 时，直接使用（自动安装到本地项目）
-[ -d "$SCRIPT_DIR/.cursor" ] && DO_LOCAL=true
 
 install_to() {
   local dir="$1"
@@ -91,41 +88,37 @@ if [ ! -f "$CMD_SRC" ]; then
   exit 1
 fi
 
-# 全局安装
-if [ "$DO_GLOBAL" = true ]; then
-  # 当前用户
-  install_with_hook "${CURSOR_HOME:-$HOME/.cursor}"
-
-  # WSL 下 Cursor 往往用 root：仅当当前是 root 时才装到 /root，避免普通用户因无权限失败
-  if [ "$(whoami)" = "root" ]; then
-    install_with_hook "/root/.cursor"
-  fi
-
-  # 若当前是 root 但存在 hardy 用户目录，也装一份到 hardy 的 .cursor，避免 Cursor 以 hardy 打开时看不到命令
-  if [ "$(whoami)" = "root" ] && [ -d /home/hardy ] && [ -w /home/hardy ]; then
-    install_with_hook "/home/hardy/.cursor"
-  fi
-
-  # 若在 WSL，提示 Windows 侧
-  if grep -qi microsoft /proc/version 2>/dev/null; then
-    echo ""
-    echo "If Cursor runs on Windows (not WSL), copy the command to Windows:"
-    echo "  To: %USERPROFILE%\\.cursor\\commands\\ralph-loop.md"
-  fi
-fi
-
-# 本地项目安装：安装到脚本所在目录的 .cursor/
-if [ "$DO_LOCAL" = true ]; then
-  LOCAL_CURSOR="$SCRIPT_DIR/.cursor"
-  install_with_hook "$LOCAL_CURSOR"
+# 当前目录安装：在运行脚本的目录下创建/使用 .cursor/
+if [ "$DO_CWD" = true ]; then
+  CWD_CURSOR="$CWD/.cursor"
+  install_with_hook "$CWD_CURSOR"
   echo ""
-  echo "Local project: $LOCAL_CURSOR"
+  echo "Current dir .cursor: $CWD_CURSOR"
 fi
 
-# 指定项目目录安装：安装到 PATH/.cursor/ 并创建/更新 hooks.json
+# 指定项目目录安装：安装到 PATH/.cursor/
 if [ -n "$PROJECT_DIR" ]; then
   PROJECT_CURSOR="$(cd "$PROJECT_DIR" && pwd)/.cursor"
   install_with_hook "$PROJECT_CURSOR"
   echo ""
   echo "Project .cursor: $PROJECT_CURSOR"
+fi
+
+# 全局安装（可选）
+if [ "$DO_GLOBAL" = true ]; then
+  install_with_hook "${CURSOR_HOME:-$HOME/.cursor}"
+
+  if [ "$(whoami)" = "root" ]; then
+    install_with_hook "/root/.cursor"
+  fi
+
+  if [ "$(whoami)" = "root" ] && [ -d /home/hardy ] && [ -w /home/hardy ]; then
+    install_with_hook "/home/hardy/.cursor"
+  fi
+
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    echo ""
+    echo "If Cursor runs on Windows (not WSL), copy the command to Windows:"
+    echo "  To: %USERPROFILE%\\.cursor\\commands\\ralph-loop.md"
+  fi
 fi

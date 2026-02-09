@@ -6,6 +6,51 @@
 
 **English** → [README.md](README.md)
 
+---
+
+## 为什么需要 cursor-ralph？
+
+在 Cursor 里用 Agent 做「大一点」的事时，经常会遇到这种体验：
+
+- **任务还没做完，对话就停了**：比如「把测试覆盖率提到 80%」「修完 src/ 下所有类型错误」，Agent 刚改了几轮，就提示你「可以继续对话」或直接不再自动回复。
+- **原因在于 Cursor 的 5 轮限制**：同一对话里，Agent 通过 `followup_message` 连续自动续接的次数被限制为 **5 轮**。第 5 轮之后，链就断了，必须由**用户**再发一条消息才能继续。
+- **结果**：你要么守在旁边每隔几轮手动点「继续」或再发一句「继续」，要么任务被半路截断，体验割裂，长任务很难「一次性跑完」。
+
+也就是说：**痛点不是模型能力不够，而是产品层面的轮次上限，导致 Cursor 无法在无人值守的情况下持续工作。**
+
+cursor-ralph 要解决的就是这件事：**让 Cursor 像真正的代理一样，在安全上限内一直跑，直到任务完成或你主动停止。**
+
+---
+
+## cursor-ralph 如何让 Cursor 持续工作？
+
+### 思路：Ralph 循环 + stop hook
+
+1. **Ralph 循环**  
+   你只发一次目标（例如「添加测试直到覆盖率达到 80%」），Agent 在**循环**里反复执行：改代码、跑测试、看结果、再改……直到输出约定好的「完成」信号（默认是 `COMPLETE`）或达到你设的最大迭代数。你不需要每 5 轮就过来点一次继续。
+
+2. **用 Cursor 的 stop hook 接上循环**  
+   每次 Agent 回复结束后，Cursor 会执行我们配置的 **stop hook**。hook 会：
+   - 读当前任务状态（进度、是否完成、是否已达最大轮数）；
+   - 若任务已完成或达到安全上限 → 清理并退出；
+   - 若当前会话还没到 5 轮 → 通过返回 `followup_message` 让 Cursor **自动再问 Agent 一句**，链继续；
+   - 若已经到第 5 轮（Cursor 的硬限制）→ 用各平台方式**往 Cursor 聊天框里自动输入**一条新消息：`/ralph-loop --continue <conversation_id>`，相当于「用户」发了一条续跑指令，新会话重新计数，从而绕过 5 轮上限。
+
+3. **自动续跑（按平台）**  
+   - **macOS**：用 `osascript` 把续跑命令输入到 Cursor（需授予辅助功能权限）。  
+   - **Linux (X11 / Wayland)**：用 `xdotool` 或 `ydotool` 把输入发到 Cursor 窗口。  
+   - **WSL**：用 PowerShell 的 SendKeys 把输入发到 Windows 下的 Cursor 窗口（会先尝试把焦点从终端移到聊天框）。  
+   - **Windows 原生**：暂无自动输入，5 轮后需在聊天框**手动**输入 `/ralph-loop --continue <conversation_id>`。
+
+4. **和社区扩展一起用（可选）**  
+   Cursor 还有「25 次工具调用后暂停」等限制，和 5 轮限制是两回事。可以**同时**安装 [Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue) 或 [cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume)，让 5 轮由 ralph-loop 解决、25 工具调用/限流由扩展解决，长任务更少被打断。详见 [与社区扩展一起使用 / 手动续跑](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md)。
+
+**总结**：  
+- **痛点**：Cursor 的 5 轮 followup_message 限制，导致长任务被强制中断，需要人工反复「继续」。  
+- **做法**：用 `/ralph-loop "任务"` 启动一次，由 stop hook 在每轮结束后决定是自动续接（followup_message）还是自动输入续跑命令（越过 5 轮），从而让 Cursor 在设定上限内**持续工作**，直到任务完成或达到最大迭代数。
+
+---
+
 ## 安装
 
 **推荐：** 在仓库根目录执行安装脚本。脚本会安装 `/ralph-loop` 命令并配置 stop hook（包括当前用户目录，在 WSL 下通常还会配置 `/root`）：
@@ -47,7 +92,7 @@ cd ~/.cursor-ralph
 
 若无法使用自动续跑（或失败），可在 5 轮后手动执行 `/ralph-loop --continue <conversation_id>`。
 
-**与社区扩展一起使用**：可与 [Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue)、[cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume) 等扩展同时安装，分别应对 **5 轮限制**与 **25 工具调用/限流**，减少长任务中断。自动续跑失败时可在聊天框手动输入续跑命令。详见 [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md)。
+**与社区扩展一起使用**：可与 [Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue)、[cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume) 等扩展同时安装，分别应对 **5 轮限制**与 **25 工具调用/限流**，减少长任务中断。Cursor Auto Continue 可从扩展市场安装、在界面中从 VSIX 安装，或**用命令行安装**（依赖：终端可用的 Cursor CLI + 本仓库中的 `cursor-auto-continue-0.1.5.vsix`）：`cursor --install-extension "$(pwd)/cursor-auto-continue-0.1.5.vsix"`。各方式与依赖说明见 [docs/CURSOR-AUTO-CONTINUE-INSTALL.md](docs/CURSOR-AUTO-CONTINUE-INSTALL.md)，自动续跑失败时手动续跑见 [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md)。
 
 ## 什么是 Ralph 循环？
 
@@ -149,7 +194,7 @@ cd ~/.cursor-ralph
   脚本在终端里跑时焦点在终端，Ctrl+L 在 bash 里是清屏，会被终端吃掉。脚本会先发 **Ctrl+`** 移出终端，再 Ctrl+L、**Escape**，然后**模拟点击 Cursor 窗口底部中央**以把焦点移入聊天输入框，再输入续跑命令。若仍失败，可到第 5 轮时手动在聊天里输入 `/ralph-loop --continue <conversation_id>`。详见 [docs/WSL-CURSOR-FOCUS-INVESTIGATION.md](docs/WSL-CURSOR-FOCUS-INVESTIGATION.md)。
 
 - **想同时绕过 25 工具调用限制，或自动续跑失败时如何手动续跑**  
-  见 [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md)。
+  见 [docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md](docs/COMMUNITY-EXTENSIONS-AND-MANUAL-CONTINUE.md)。若要用命令行（含 headless）安装 Cursor Auto Continue，见 [docs/CURSOR-AUTO-CONTINUE-INSTALL.md](docs/CURSOR-AUTO-CONTINUE-INSTALL.md)（依赖：Cursor CLI + `cursor-auto-continue-0.1.5.vsix`）。
 
 ## 致谢
 

@@ -15,10 +15,10 @@ Cursor 里有两类常见限制：
 
 这两类限制互不重叠。**可以同时安装 ralph-loop 与下列扩展**，分别应对 5 轮限制与 25 工具调用/限流，从而在长任务中减少中断：
 
-- **[Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue)**（VS Code 扩展）：检测到 25 工具调用限制时自动在聊天框输入「continue」并发送。
-- **[cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume)**：通过 Custom CSS and JS Loader 注入脚本，自动点击「resume the conversation」链接；也处理部分连接/限流错误。
+- **[Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue)**（VS Code 扩展）：检测到 25 工具调用限制时自动在聊天框输入「continue」并发送。支持扩展市场、从 VSIX 安装、以及**命令行安装**（依赖：Cursor CLI + 本仓库中的 `cursor-auto-continue-0.1.5.vsix`）。安装步骤与依赖说明见 [CURSOR-AUTO-CONTINUE-INSTALL.md](CURSOR-AUTO-CONTINUE-INSTALL.md)。
+- **[cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume)**：通过 Custom CSS and JS Loader 注入脚本，自动点击「resume the conversation」链接；也处理部分连接/限流错误。安装步骤见 [CURSOR-AUTO-RESUME-INSTALL.md](CURSOR-AUTO-RESUME-INSTALL.md)。
 
-安装方式请见各项目说明。与 ralph-loop 无冲突，可一起使用。
+与 ralph-loop 无冲突，可一起使用。
 
 ---
 
@@ -43,7 +43,7 @@ Cursor 里有两类常见限制：
 
 ## 小结
 
-- **要同时越过 5 轮 + 25 工具调用/限流**：安装 ralph-loop 后，再安装 Cursor Auto Continue 或 cursor-auto-resume（加法）。
+- **要同时越过 5 轮 + 25 工具调用/限流**：安装 ralph-loop 后，再安装 Cursor Auto Continue（可[命令行安装](CURSOR-AUTO-CONTINUE-INSTALL.md#方法三命令行headless安装)：`cursor --install-extension "$(pwd)/cursor-auto-continue-0.1.5.vsix"`，依赖 Cursor CLI + VSIX）或 cursor-auto-resume（加法）。
 - **自动续跑失败时**：在聊天框手动输入 `/ralph-loop --continue <conversation_id>` 即可续跑。
 
 ---
@@ -61,8 +61,8 @@ Cursor has two separate limits:
 
 You can **install ralph-loop and one of these extensions together** to address both:
 
-- **[Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue)**: VS Code extension that types "continue" and submits when the 25 tool-call limit is hit.
-- **[cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume)**: Injected script that clicks the "resume the conversation" link and handles some connection/rate-limit UI.
+- **[Cursor Auto Continue](https://marketplace.visualstudio.com/items?itemName=risalabs.cursor-auto-continue)**: VS Code extension that types "continue" and submits when the 25 tool-call limit is hit. Install via marketplace, from VSIX, or **via CLI** (dependencies: Cursor CLI + repo’s `cursor-auto-continue-0.1.5.vsix`). See [CURSOR-AUTO-CONTINUE-INSTALL.md](CURSOR-AUTO-CONTINUE-INSTALL.md) for steps and dependencies.
+- **[cursor-auto-resume](https://github.com/thelastbackspace/cursor-auto-resume)**: Injected script that clicks the "resume the conversation" link. See [CURSOR-AUTO-RESUME-INSTALL.md](CURSOR-AUTO-RESUME-INSTALL.md).
 
 ### 2. Manual continue when auto-continue fails
 
